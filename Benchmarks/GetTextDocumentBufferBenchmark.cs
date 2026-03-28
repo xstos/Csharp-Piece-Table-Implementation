@@ -7,7 +7,7 @@ namespace Benchmarks
     [InProcess]
     public class GetTextDocumentBufferBenchmark
     {
-        private TextDocumentBuffer _textDocumentBuffer;
+        private TextDocumentBuffer<char> _textDocumentBuffer;
 
         [Params(1_000, 10_000, 100_000, 1_000_000)]
         public int InitialNumberOfPiecesInPieceTable;
@@ -15,10 +15,10 @@ namespace Benchmarks
         [IterationSetup]
         public void IterationSetup()
         {
-            _textDocumentBuffer = new TextDocumentBuffer(Array.Empty<char>());
+            _textDocumentBuffer = new TextDocumentBuffer<char>(Array.Empty<char>());
             for (int i = 0; i < InitialNumberOfPiecesInPieceTable; i++)
             {
-                _textDocumentBuffer.Insert(0, "Hello");
+                _textDocumentBuffer.Insert(0, "Hello".ToCharArray());
             }
         }
 

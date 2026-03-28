@@ -10,12 +10,12 @@ namespace UnitTests
         private const string Text
             = "During the development of the .NET Framework, the class libraries were originally written using a managed code compiler system called \"Simple Managed C\" (SMC).";
 
-        private TextDocumentBuffer _textDocumentBuffer;
+        private TextDocumentBuffer<char> _textDocumentBuffer;
 
         public TextDocumentBufferTest()
         {
             _textDocumentBuffer
-                = new TextDocumentBuffer(
+                = new TextDocumentBuffer<char>(
                     Text.ToArray());
         }
 
@@ -41,21 +41,21 @@ namespace UnitTests
         [Fact]
         public void GetText_ExtractBeginningOfOriginalDocumentUnchanged()
         {
-            string documentText = _textDocumentBuffer.GetText(new Span(0, 2));
+            string documentText = _textDocumentBuffer.GetText(new Span(0, 2)).ToStr();
             Assert.Equal(Text[..2], documentText);
         }
 
         [Fact]
         public void GetText_ExtractEndOfOriginalDocumentUnchanged()
         {
-            string documentText = _textDocumentBuffer.GetText(new Span(_textDocumentBuffer.DocumentLength - 2, 2));
+            string documentText = _textDocumentBuffer.GetText(new Span(_textDocumentBuffer.DocumentLength - 2, 2)).ToStr();
             Assert.Equal(Text.Substring(Text.Length - 2, 2), documentText);
         }
 
         [Fact]
         public void GetText_ExtractMiddleOfOriginalDocumentUnchanged()
         {
-            string documentText = _textDocumentBuffer.GetText(new Span(1, 2));
+            string documentText = _textDocumentBuffer.GetText(new Span(1, 2)).ToStr();
             Assert.Equal(Text.Substring(1, 2), documentText);
         }
 
@@ -63,10 +63,10 @@ namespace UnitTests
         public void Insert_EmptyDocument()
         {
             _textDocumentBuffer
-                = new TextDocumentBuffer(Array.Empty<char>());
+                = new TextDocumentBuffer<char>([]);
 
             string appendText = "TEST!";
-            _textDocumentBuffer.Insert(0, appendText);
+            _textDocumentBuffer.Insert(0, appendText.ToCharArray());
 
             Assert.Equal(appendText.Length, _textDocumentBuffer.DocumentLength);
             Assert.Equal(appendText, GetFullDocument());
@@ -76,7 +76,7 @@ namespace UnitTests
         public void Insert_EndOfDocument()
         {
             string appendText = "TEST!";
-            _textDocumentBuffer.Insert(Text.Length, appendText);
+            _textDocumentBuffer.Insert(Text.Length, appendText.ToCharArray());
 
             Assert.Equal(Text.Length + appendText.Length, _textDocumentBuffer.DocumentLength);
             Assert.Equal(Text + appendText, GetFullDocument());
@@ -86,7 +86,7 @@ namespace UnitTests
         public void Insert_BeginningOfDocument()
         {
             string appendText = "TEST!";
-            _textDocumentBuffer.Insert(0, appendText);
+            _textDocumentBuffer.Insert(0, appendText.ToCharArray());
 
             Assert.Equal(appendText.Length + Text.Length, _textDocumentBuffer.DocumentLength);
             Assert.Equal(appendText + Text, GetFullDocument());
@@ -96,7 +96,7 @@ namespace UnitTests
         public void Insert_InsideOfOriginalDocument()
         {
             string appendText = "TEST!";
-            _textDocumentBuffer.Insert(2, appendText);
+            _textDocumentBuffer.Insert(2, appendText.ToCharArray());
 
             Assert.Equal(appendText.Length + Text.Length, _textDocumentBuffer.DocumentLength);
             Assert.Equal(string.Concat(Text.AsSpan(0, 2), appendText, Text.AsSpan(2)), GetFullDocument());
@@ -106,10 +106,10 @@ namespace UnitTests
         public void Insert_BeginningOfAppendBufferPiece()
         {
             string appendText = "TEST!";
-            _textDocumentBuffer.Insert(2, appendText);
+            _textDocumentBuffer.Insert(2, appendText.ToCharArray());
 
             string appendText2 = "HelloThere";
-            _textDocumentBuffer.Insert(2, appendText2);
+            _textDocumentBuffer.Insert(2, appendText2.ToCharArray());
 
             Assert.Equal(appendText.Length + appendText2.Length + Text.Length, _textDocumentBuffer.DocumentLength);
             Assert.Equal(string.Concat(Text.AsSpan(0, 2), appendText2, appendText, Text.AsSpan(2)), GetFullDocument());
@@ -119,10 +119,10 @@ namespace UnitTests
         public void Insert_EndOfAppendBufferPiece()
         {
             string appendText = "TEST!";
-            _textDocumentBuffer.Insert(2, appendText);
+            _textDocumentBuffer.Insert(2, appendText.ToCharArray());
 
             string appendText2 = "HelloThere";
-            _textDocumentBuffer.Insert(2 + appendText.Length, appendText2);
+            _textDocumentBuffer.Insert(2 + appendText.Length, appendText2.ToCharArray());
 
             Assert.Equal(appendText.Length + appendText2.Length + Text.Length, _textDocumentBuffer.DocumentLength);
             Assert.Equal(Text[..2] + appendText + appendText2 + Text[2..], GetFullDocument());
@@ -132,10 +132,10 @@ namespace UnitTests
         public void Insert_InsideOfAppendBufferPiece()
         {
             string appendText = "TEST!";
-            _textDocumentBuffer.Insert(2, appendText);
+            _textDocumentBuffer.Insert(2, appendText.ToCharArray());
 
             string appendText2 = "HelloThere";
-            _textDocumentBuffer.Insert(4, appendText2);
+            _textDocumentBuffer.Insert(4, appendText2.ToCharArray());
 
             Assert.Equal(appendText.Length + appendText2.Length + Text.Length, _textDocumentBuffer.DocumentLength);
             Assert.Equal(Text[..2] + appendText[..2] + appendText2 + appendText.Substring(2, 3) + Text[2..], GetFullDocument());
@@ -174,7 +174,7 @@ namespace UnitTests
         public void Delete_BeginningOfAppendBufferPiece()
         {
             string appendText = "TEST!";
-            _textDocumentBuffer.Insert(2, appendText);
+            _textDocumentBuffer.Insert(2, appendText.ToCharArray());
 
             // Delete "TE".
             _textDocumentBuffer.Delete(new Span(2, 2));
@@ -187,7 +187,7 @@ namespace UnitTests
         public void Delete_EndOfAppendBufferPiece()
         {
             string appendText = "TEST!";
-            _textDocumentBuffer.Insert(2, appendText);
+            _textDocumentBuffer.Insert(2, appendText.ToCharArray());
 
             // Delete "ST!".
             _textDocumentBuffer.Delete(new Span(2 + appendText.Length - 3, 3));
@@ -200,7 +200,7 @@ namespace UnitTests
         public void Delete_InsideOfAppendBufferPiece()
         {
             string appendText = "TEST!";
-            _textDocumentBuffer.Insert(2, appendText);
+            _textDocumentBuffer.Insert(2, appendText.ToCharArray());
 
             // Delete "ES".
             _textDocumentBuffer.Delete(new Span(3, 2));
@@ -213,16 +213,16 @@ namespace UnitTests
         public void Delete_AccrossSeveralAppendBufferPieces()
         {
             string appendText = "Hello_";
-            _textDocumentBuffer.Insert(2, appendText);
+            _textDocumentBuffer.Insert(2, appendText.ToCharArray());
 
             string appendText2 = "World!/";
-            _textDocumentBuffer.Insert(2 + appendText.Length, appendText2);
+            _textDocumentBuffer.Insert(2 + appendText.Length, appendText2.ToCharArray());
 
             string appendText3 = "Boo";
-            _textDocumentBuffer.Insert(2 + appendText.Length + appendText2.Length, appendText3);
+            _textDocumentBuffer.Insert(2 + appendText.Length + appendText2.Length, appendText3.ToCharArray());
 
             string appendText4 = "Foo Bar";
-            _textDocumentBuffer.Insert(2 + appendText.Length + appendText2.Length + appendText3.Length, appendText4);
+            _textDocumentBuffer.Insert(2 + appendText.Length + appendText2.Length + appendText3.Length, appendText4.ToCharArray());
 
             // Delete "_World!/BooFoo", so it forms "Hello Bar".
             _textDocumentBuffer.Delete(new Span(2 + "Hello".Length, "_".Length + appendText2.Length + appendText3.Length + "Foo".Length));
@@ -236,16 +236,16 @@ namespace UnitTests
         {
             string originalText = "Hello!";
             _textDocumentBuffer
-                = new TextDocumentBuffer(
+                = new TextDocumentBuffer<char>(
                     originalText.ToArray());
             Assert.Equal("Hello!", GetFullDocument());
 
             string appendText = " I'm testing a PieceTable implementation.";
-            _textDocumentBuffer.Insert(originalText.Length, appendText);
+            _textDocumentBuffer.Insert(originalText.Length, appendText.ToCharArray());
             Assert.Equal("Hello! I'm testing a PieceTable implementation.", GetFullDocument());
 
             string appendText2 = " there";
-            _textDocumentBuffer.Insert("Hello".Length, appendText2);
+            _textDocumentBuffer.Insert("Hello".Length, appendText2.ToCharArray());
             Assert.Equal("Hello there! I'm testing a PieceTable implementation.", GetFullDocument());
 
             _textDocumentBuffer.Delete(new Span(0, "Hello there! ".Length));
@@ -260,13 +260,13 @@ namespace UnitTests
             Delete_AccrossSeveralPiecesOfVariousBuffer();
             Assert.Equal("I'm testing a PieceTable implementation.", GetFullDocument());
 
-            _textDocumentBuffer.Insert("I'm testing a".Length, "n implementation of");
+            _textDocumentBuffer.Insert("I'm testing a".Length, "n implementation of".ToCharArray());
             Assert.Equal("I'm testing an implementation of PieceTable implementation.", GetFullDocument());
 
             _textDocumentBuffer.Delete(new Span("I'm testing an implementation of PieceTable ".Length, "implementation".Length));
             Assert.Equal("I'm testing an implementation of PieceTable .", GetFullDocument());
 
-            _textDocumentBuffer.Insert("I'm testing an implementation of PieceTable ".Length, "data Structure");
+            _textDocumentBuffer.Insert("I'm testing an implementation of PieceTable ".Length, "data Structure".ToCharArray());
             Assert.Equal("I'm testing an implementation of PieceTable data Structure.", GetFullDocument());
 
             _textDocumentBuffer.Delete(new Span("I'm testing an implementation of PieceTable data ".Length, "S".Length));
@@ -302,7 +302,7 @@ namespace UnitTests
 
         private string GetFullDocument()
         {
-            string documentText = _textDocumentBuffer.GetText(new Span(0, _textDocumentBuffer.DocumentLength));
+            string documentText = _textDocumentBuffer.GetText(new Span(0, _textDocumentBuffer.DocumentLength)).ToStr();
             return documentText;
         }
     }

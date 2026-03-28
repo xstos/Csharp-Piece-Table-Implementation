@@ -1,4 +1,5 @@
-﻿using System.Text;
+﻿using System.Runtime.InteropServices;
+using System.Text;
 
 namespace CsharpPieceTableImplementation
 {
@@ -6,14 +7,14 @@ namespace CsharpPieceTableImplementation
     /// Represents a buffer that contains the original text of the document and all the changes made by the user.
     /// This is an public implementation of the PieceTable data structure.
     /// </summary>
-    public sealed class TextDocumentBuffer
+    public sealed class TextDocumentBuffer<T>
     {
-        private readonly ReadOnlyMemory<char> _originalDocumentBuffer;
-        private readonly List<char> _appendBuffer = new(); // max size is 2GB (approximately 1 billion characters)
+        private readonly ReadOnlyMemory<T> _originalDocumentBuffer;
+        private readonly List<T> _appendBuffer = new(); // max size is 2GB (approximately 1 billion characters)
         private readonly TextPieceTable _pieceTable;
-        private readonly StringSpanPool _stringSpanPool = new();
+        private readonly StringSpanPool<T> _stringSpanPool = new();
 
-        public TextDocumentBuffer(char[] originalDocument)
+        public TextDocumentBuffer(T[] originalDocument)
         {
             Guard.IsNotNull(originalDocument, nameof(originalDocument));
 
@@ -24,7 +25,7 @@ namespace CsharpPieceTableImplementation
         /// <summary>
         /// Gets the character at the given text document position.
         /// </summary>
-        public char this[int textDocumentPosition]
+        public T this[int textDocumentPosition]
         {
             get
             {
@@ -54,25 +55,25 @@ namespace CsharpPieceTableImplementation
         /// <remarks>
         /// This method can allocate a lot of memory because it rebuilds a string from the piece table. Use it caution.
         /// </remarks>
-        public string GetText(Span spanInTextDocument)
+        public Span<T> GetText(Span spanInTextDocument)
         {
             if (spanInTextDocument.IsEmpty)
             {
-                return string.Empty;
+                return [];
             }
 
             // Check whether this span has already been asked in the past. If yes, we already
             // have a string for it, no need to instantiate a new one.
-            string? result = _stringSpanPool.GetStringFromCache(spanInTextDocument);
-            if (!string.IsNullOrEmpty(result))
+            List<T>? result = _stringSpanPool.GetStringFromCache(spanInTextDocument);
+            if (!(result is null || result.Count==0))
             {
-                return result;
+                return CollectionsMarshal.AsSpan(result);
             }
 
             // Let's find all the pieces that overlap the given text document span.
             _pieceTable.FindPiecesCoveringTextDocumentSpan(spanInTextDocument, out IReadOnlyList<Piece> pieces, out int pieceStartPositionInDocument);
 
-            var builder = new StringBuilder();
+            var builder = new List<T>();
 
             for (int i = 0; i < pieces.Count; i++)
             {
@@ -101,24 +102,29 @@ namespace CsharpPieceTableImplementation
                 // Pick up the characters from the right buffer.
                 if (piece.IsOriginal)
                 {
-                    builder.Append(_originalDocumentBuffer.Span.Slice(bufferPositionStart, bufferLength));
+                    var sp = _originalDocumentBuffer.Span.Slice(bufferPositionStart, bufferLength);
+                    for (int j = 0; j < sp.Length; j++)
+                    {
+                        builder.Add(sp[j]);
+                    }
+                    
                 }
                 else
                 {
                     for (int j = bufferPositionStart; j < bufferPositionStart + bufferLength; j++)
                     {
-                        builder.Append(_appendBuffer[j]);
+                        builder.Add(_appendBuffer[j]);
                     }
                 }
             }
 
             // Generate the final string.
-            result = builder.ToString()!;
+            result = builder;
 
             // Cache it, so we don't have to instantiate it again if we ask multiple time the same span.
             _stringSpanPool.Cache(spanInTextDocument, result);
 
-            return result;
+            return CollectionsMarshal.AsSpan(result);
         }
 
         /// <summary>
@@ -127,7 +133,7 @@ namespace CsharpPieceTableImplementation
         /// <remarks>
         /// The character will be added to the append buffer.
         /// </remarks>
-        public void Insert(int textDocumentPosition, char @char)
+        public void Insert(int textDocumentPosition, T @char)
         {
             // TODO: Potential optimization:
             //       It's likely possible that inserted characters to a text document are very redundant. For example,
@@ -159,9 +165,9 @@ namespace CsharpPieceTableImplementation
         /// <remarks>
         /// The text will be added to the append buffer.
         /// </remarks>
-        public void Insert(int textDocumentPosition, string text)
+        public void Insert(int textDocumentPosition, T[] text)
         {
-            if (string.IsNullOrEmpty(text))
+            if (text is null || text.Length==0)
             {
                 return;
             }
